@@ -1,0 +1,1334 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protoplanetary Disk N-Body Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        canvas { display: block; touch-action: none; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(15, 23, 42, 0.6); }
+        ::-webkit-scrollbar-thumb { background: rgba(56, 189, 248, 0.4); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(56, 189, 248, 0.7); }
+    </style>
+</head>
+<body class="h-full bg-slate-950 text-slate-100 overflow-hidden flex flex-col">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-slate-900/80 backdrop-blur border-b border-slate-800 px-4 py-3 flex items-center justify-between shrink-0 z-20">
+        <div class="flex items-center space-x-3">
+            <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-amber-500 via-orange-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-orange-500/20">
+                <i class="fa-solid fa-solar-system text-white text-lg"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-base tracking-tight bg-gradient-to-r from-amber-200 via-orange-300 to-indigo-300 bg-clip-text text-transparent">ProtoDisk N-Body</h1>
+                <p class="text-xs text-slate-400">Protoplanetary Accretion & Gravitational Simulator</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2">
+            <button id="toggle-sidebar" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-medium rounded-lg border border-slate-700 transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-sliders text-cyan-400"></i>
+                <span class="hidden sm:inline">Controls</span>
+            </button>
+            <button id="teleport-btn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-medium rounded-lg border border-slate-700 transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-location-crosshairs text-emerald-400"></i>
+                <span class="hidden sm:inline">Teleporter</span>
+            </button>
+            <button id="info-btn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-medium rounded-lg border border-slate-700 transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-circle-info text-amber-400"></i>
+                <span class="hidden sm:inline">About</span>
+            </button>
+        </div>
+    </header>
+
+    <div class="flex-1 relative flex overflow-hidden">
+
+        <!-- Simulation Viewport -->
+        <div class="flex-1 relative bg-slate-950 cursor-grab active:cursor-grabbing" id="canvas-container">
+            <canvas id="simCanvas" class="w-full h-full"></canvas>
+
+            <!-- HUD -->
+            <div class="absolute top-4 left-4 pointer-events-none bg-slate-900/80 backdrop-blur border border-slate-800/80 rounded-xl p-3 text-xs space-y-1.5 shadow-xl max-w-xs">
+                <div class="flex justify-between space-x-6">
+                    <span class="text-slate-400">Bodies Active:</span>
+                    <span id="hud-bodies" class="font-mono font-semibold text-cyan-400">0</span>
+                </div>
+                <div class="flex justify-between space-x-6">
+                    <span class="text-slate-400">Largest Body:</span>
+                    <span id="hud-maxmass" class="font-mono font-semibold text-amber-400">-</span>
+                </div>
+                <div class="flex justify-between space-x-6">
+                    <span class="text-slate-400">Sim Time:</span>
+                    <span id="hud-time" class="font-mono font-semibold text-slate-200">0.00 yrs</span>
+                </div>
+                <div class="flex justify-between space-x-6">
+                    <span class="text-slate-400">Physics Frame:</span>
+                    <span id="hud-frame" class="font-mono font-semibold text-slate-200">0</span>
+                </div>
+                <div class="flex justify-between space-x-6">
+                    <span class="text-slate-400">Collisions / Merges:</span>
+                    <span id="hud-merges" class="font-mono font-semibold text-emerald-400">0</span>
+                </div>
+                <div class="flex justify-between space-x-6">
+                    <span class="text-slate-400">Planet-Moon Alerts:</span>
+                    <span id="hud-alerts" class="font-mono font-semibold text-rose-400">0</span>
+                </div>
+            </div>
+
+            <!-- Toast for planet-moon alerts -->
+            <div id="toast" class="hidden absolute top-4 right-4 z-30 bg-rose-950/90 border border-rose-700 text-rose-200 text-xs px-3 py-2 rounded-lg shadow-xl max-w-xs"></div>
+
+            <!-- View Controls -->
+            <div class="absolute bottom-4 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur border border-slate-800 rounded-2xl p-2 flex items-center space-x-2 shadow-2xl z-10">
+                <button id="btn-zoom-in" title="Zoom In" class="w-9 h-9 bg-slate-800 hover:bg-slate-700 rounded-xl flex items-center justify-center text-slate-200 transition">
+                    <i class="fa-solid fa-magnifying-glass-plus text-xs"></i>
+                </button>
+                <button id="btn-zoom-out" title="Zoom Out" class="w-9 h-9 bg-slate-800 hover:bg-slate-700 rounded-xl flex items-center justify-center text-slate-200 transition">
+                    <i class="fa-solid fa-magnifying-glass-minus text-xs"></i>
+                </button>
+                <button id="btn-reset-view" title="Reset Camera" class="px-3 h-9 bg-slate-800 hover:bg-slate-700 rounded-xl text-xs font-medium text-slate-200 transition flex items-center space-x-1.5">
+                    <i class="fa-solid fa-compress text-cyan-400"></i>
+                    <span>Recenter</span>
+                </button>
+                <div class="w-px h-5 bg-slate-700 mx-1"></div>
+                <button id="btn-play-pause" class="px-4 h-9 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-emerald-900/30 transition flex items-center space-x-2">
+                    <i id="play-icon" class="fa-solid fa-play"></i>
+                    <span id="play-text">Start Sim</span>
+                </button>
+                <button id="btn-restart" title="Reset & Reinitialize" class="w-9 h-9 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/50 rounded-xl flex items-center justify-center transition">
+                    <i class="fa-solid fa-rotate-right text-xs"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-80 bg-slate-900 border-l border-slate-800 flex flex-col shrink-0 transition-all duration-300 z-10 overflow-y-auto">
+            <div class="p-5 flex-1 min-h-0 flex flex-col gap-6">
+            <div id="panel-controls" class="space-y-6">                <div class="flex items-center justify-between">
+                    <h2 class="font-semibold text-sm text-slate-200 flex items-center space-x-2">
+                        <i class="fa-solid fa-sliders text-cyan-400"></i>
+                        <span>Disk Parameters</span>
+                    </h2>
+                    <span class="text-xs px-2 py-0.5 bg-cyan-950 border border-cyan-800/60 text-cyan-300 rounded-md font-mono" id="status-badge">Configuring</span>
+                </div>
+
+                <!-- Setup -->
+                <div id="setup-panel" class="space-y-4">
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs">
+                            <label class="text-slate-300 font-medium">Asteroid Count</label>
+                            <span id="val-asteroid-count" class="font-mono text-cyan-400 font-semibold">1000</span>
+                        </div>
+                        <input type="range" id="slider-asteroid-count" min="100" max="10000" step="100" value="1000"
+                            class="w-full accent-cyan-500 bg-slate-800 h-2 rounded-lg cursor-pointer">
+                        <p class="text-[11px] text-slate-500">Planetesimals orbiting the star. Above ~3000 the simulation slows down.</p>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs">
+                            <label class="text-slate-300 font-medium">Min Asteroid Mass</label>
+                            <span id="val-ast-min" class="font-mono text-cyan-400 font-semibold">33 M⊕</span>
+                        </div>
+                        <input type="range" id="slider-ast-min" min="0.01" max="300" step="0.01" value="33"
+                            class="w-full accent-cyan-500 bg-slate-800 h-2 rounded-lg cursor-pointer">
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs">
+                            <label class="text-slate-300 font-medium">Max Asteroid Mass</label>
+                            <span id="val-ast-max" class="font-mono text-cyan-400 font-semibold">200 M⊕</span>
+                        </div>
+                        <input type="range" id="slider-ast-max" min="0.01" max="300" step="0.01" value="200"
+                            class="w-full accent-cyan-500 bg-slate-800 h-2 rounded-lg cursor-pointer">
+                        <p class="text-[11px] text-slate-500">Asteroids get a random mass between these two values, in Earth masses (M⊕).</p>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs">
+                            <label class="text-slate-300 font-medium">Central Star Mass</label>
+                            <span id="val-star-mass" class="font-mono text-amber-400 font-semibold">1.0 M☉</span>
+                        </div>
+                        <input type="range" id="slider-star-mass" min="0" max="1000" step="1" value="315" class="w-full accent-amber-500 bg-slate-800 h-2 rounded-lg cursor-pointer">
+                        <p class="text-[11px] text-slate-500">Mass of the protostar in solar masses.</p>
+                    </div>
+
+
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs">
+                            <label class="text-slate-300 font-medium">Disk Spread</label>
+                            <span id="val-disk-spread" class="font-mono text-indigo-400 font-semibold">Standard</span>
+                        </div>
+                        <select id="select-disk-spread" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+                            <option value="compact">Compact Disk (High Density)</option>
+                            <option value="medium" selected>Standard Protoplanetary Disk</option>
+                            <option value="wide">Extended Outer Disk</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs">
+                            <label class="text-slate-300 font-medium">Accretion / Collision Mode</label>
+                            <span id="val-collision-mode" class="font-mono text-emerald-400 font-semibold">Merge</span>
+                        </div>
+                        <select id="select-collision-mode" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+                            <option value="merge" selected>Merge on Contact (Accretion)</option>
+                            <option value="shatter">High-Speed Shatter / Bounce</option>
+                        </select>
+                        <p class="text-[11px] text-slate-500">Merge combines masses. Shatter bounces slow impacts and fragments the lighter body on fast ones.</p>
+                    </div>
+
+                    <button id="btn-apply-config" class="w-full py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-cyan-900/30 transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i>
+                        <span>Generate Protoplanetary Disk</span>
+                    </button>
+                </div>
+
+                <!-- Dynamics -->
+                <div class="pt-4 border-t border-slate-800 space-y-4">
+                    <h3 class="font-semibold text-xs text-slate-400 uppercase tracking-wider">Simulation Dynamics</h3>
+
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs">
+                            <label class="text-slate-300">Time Speed (Dt)</label>
+                            <span id="val-time-speed" class="font-mono text-cyan-400 font-semibold">1.0x</span>
+                        </div>
+                        <input type="range" id="slider-time-speed" min="0.1" max="100.0" step="0.1" value="1.0"
+                            class="w-full accent-cyan-500 bg-slate-800 h-2 rounded-lg cursor-pointer">
+                    </div>
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs">
+                            <label class="text-slate-300">Real-Time Modes</label>
+                        </div>
+                        <select id="select-realtime" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+                            <option value="off" selected>Off (Use Time Speed)</option>
+                            <option value="realtime">Real-Time (1 sec = 1 sec)</option>
+                            <option value="hour">Hour (1 hour = 1 sec)</option>
+                            <option value="day">Day (1 day = 1 sec)</option>
+                            <option value="week">Week (1 week = 1 sec)</option>
+                            <option value="month">Month (1 month = 1 sec)</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs">
+                            <label class="text-slate-300">Gravitational Strength (G)</label>
+                            <span id="val-gravity" class="font-mono text-amber-400 font-semibold">1.0x</span>
+                        </div>
+                        <input type="range" id="slider-gravity" min="0.2" max="3.0" step="0.1" value="1.0"
+                            class="w-full accent-amber-500 bg-slate-800 h-2 rounded-lg cursor-pointer">
+                    </div>
+
+                    <div class="flex items-center justify-between pt-2">
+                        <span class="text-xs text-slate-300">Show Orbital Trails</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="toggle-trails" checked class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-slate-300">Show Gravitational Vectors</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="toggle-vectors" class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600"></div>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-slate-300">Show Hill Spheres</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="toggle-hill" class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600"></div>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-slate-300">Show Star's Hill Sphere</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="toggle-star-hill" checked class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600"></div>
+                        </label>
+                    </div>
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs">
+                            <label class="text-slate-300">Show Habitable Zone</label>
+                        </div>
+                        <select id="select-hz" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+                            <option value="off" selected>Off</option>
+                            <option value="all">All Zones</option>
+                            <option value="blue">Blue Only (Too Cold)</option>
+                            <option value="red">Red Only (Too Hot)</option>
+                            <option value="green">Green Only (Habitable)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Telemetry: 3 logging systems -->
+                <div class="pt-4 border-t border-slate-800 space-y-3">
+                    <h3 class="font-semibold text-xs text-slate-400 uppercase tracking-wider flex items-center space-x-1.5">
+                        <i class="fa-solid fa-file-lines text-cyan-400"></i>
+                        <span>Telemetry Logs & Exports</span>
+                    </h3>
+                    <div class="grid grid-cols-1 gap-2">
+                        <button id="btn-export-disk" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-slate-700 rounded-lg text-xs font-medium transition flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-file-arrow-down"></i>
+                            <span id="lbl-disk">Export Disk Log (.txt)</span>
+                        </button>
+                        <button id="btn-export-merges" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-slate-700 rounded-lg text-xs font-medium transition flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-file-arrow-down"></i>
+                            <span id="lbl-merges">Export Merge Log (.txt)</span>
+                        </button>
+                        <button id="btn-export-moons" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-amber-300 border border-slate-700 rounded-lg text-xs font-medium transition flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-file-arrow-down"></i>
+                            <span id="lbl-moons">Export Planet-Moon Log (.txt)</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div id="panel-teleport" class="hidden flex-1 min-h-0 flex flex-col space-y-3">
+                <h3 class="font-semibold text-xs text-emerald-400 uppercase tracking-wider flex items-center space-x-1.5">
+                    <i class="fa-solid fa-location-crosshairs"></i>
+                    <span>Teleporter</span>
+                </h3>
+                <input type="text" id="teleport-search" placeholder="Search by body name to find a body."
+                    class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+                <div id="teleport-list" class="flex-1 min-h-0 overflow-y-auto bg-slate-950/60 border border-slate-800 rounded-xl text-xs font-mono divide-y divide-slate-800"></div>
+                <p id="teleport-count" class="text-[11px] text-slate-500"></p>
+                <button id="teleport-go" disabled class="w-full py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg text-xs font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed">Select a body first</button>
+
+            </div>
+
+            <!-- Body Inspector (shared across Controls & Teleporter) -->
+            <div id="inspector-panel" class="shrink-0 pt-4 border-t border-slate-800 hidden space-y-3">
+                <div class="flex items-center justify-between">
+                    <h3 class="font-semibold text-xs text-amber-400 uppercase tracking-wider flex items-center space-x-1.5">
+                        <i class="fa-solid fa-satellite"></i>
+                        <span>Body Inspector</span>
+                    </h3>
+                    <button id="btn-close-inspector" class="text-slate-500 hover:text-slate-300 text-xs">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <div class="bg-slate-950/60 border border-slate-800 rounded-xl p-3 text-xs space-y-2 font-mono">
+                    <div>Name: <span id="insp-name" class="text-cyan-300">-</span></div>
+                    <div>Mass: <span id="insp-mass" class="text-amber-300">-</span></div>
+                    <div>Distance: <span id="insp-dist" class="text-slate-300">-</span></div>
+                    <div>Velocity: <span id="insp-vel" class="text-slate-300">-</span></div>
+                </div>
+                <button id="btn-focus-body" class="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg text-xs font-medium transition">
+                    Follow / Lock Camera
+                </button>
+            </div>
+            </div>
+        </div>
+        </aside>
+    </div>
+    <!-- About Modal -->
+    <div id="modal-info" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center z-50 p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between">
+                <h3 class="font-bold text-base text-slate-100 flex items-center space-x-2">
+                    <i class="fa-solid fa-circle-info text-amber-400"></i>
+                    <span>About Protoplanetary Disks</span>
+                </h3>
+                <button id="modal-close" class="text-slate-400 hover:text-slate-200 w-8 h-8 rounded-lg flex items-center justify-center bg-slate-800">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="text-xs text-slate-300 space-y-3 leading-relaxed">
+                <p>Planets form through chaotic collisions and gravitational accretion of planetesimals orbiting a newborn protostar.</p>
+                <ul class="list-disc pl-4 space-y-1 text-slate-400">
+                    <li><strong class="text-slate-200">Disk Log:</strong> Every 0.5 years: bodies beyond 5 AU, active bodies, and merges.</li>
+                    <li><strong class="text-slate-200">Merge Log:</strong> Each merge records both victims' masses, the result, and their distances from the star in the frame before the crash and the merged body's position in the frame after.</li>
+                    <li><strong class="text-slate-200">Planet-Moon Log:</strong> Every year: small bound bodies that stay inside a bigger body's Hill sphere are alerted, with a count of consecutive years they have persisted.</li>
+                </ul>
+                <p><strong class="text-cyan-300">Interaction:</strong> Click any body to inspect it. Drag to pan, scroll or pinch to zoom.</p>
+            </div>
+            <div class="pt-2">
+                <button id="modal-got-it" class="w-full py-2.5 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white rounded-xl text-xs font-semibold transition">
+                    Got it, Let's Simulate!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ================= CONSTANTS =================
+    const AU_PIXELS = 100;                         // screen pixels per AU at zoom 1
+    const G_BASE = 4 * Math.PI * Math.PI;          // AU^3 / (M_sun yr^2): 1 AU orbit = 1 yr for 1 M_sun
+    const PHYS_DT = 0.002;                         // years per physics step
+    const YEARS_PER_SECOND = 0.5;                  // simulated years per real second at 1x
+    const SECONDS_PER_YEAR = 31557600;             // one Julian year in seconds
+    const MAX_STEPS_PER_FRAME = 12;                // keeps the page responsive
+    const ESCAPE_OR_OUTER_AU = 5.0;                // threshold for "away from star"
+    const PROTOPLANET_MASS = 0.005;                // M_sun, label/colour threshold
+    // Visual stages, by mass in M_sun (each stage starts at its min and lasts until the next)
+    const STAGES = [
+        { name: 'Dust',       min: 0, color: '#808080', glow: 0 },
+        { name: 'Micrometeoroid',       min: 5.0e-46, color: '#808080', glow: 0 },
+        { name: 'Meteoroid',       min: 5.0e-38, color: '#808080', glow: 0 },
+        { name: 'Asteroid',       min: 3.6e-28, color: '#808080', glow: 0 },
+        { name: 'Protoplanet',       min: 3.003e-8, color: '#f97316', glow: 0 },
+        { name: 'Rocky Planet',      min: 3.003e-7, color: '#8b5a2b', glow: 0 },
+        { name: 'Gas Dwarf',         min: 3.003e-5, color: '#8b5a2b', glow: 0 },
+        { name: 'Gas Planet',        min: 4.204e-5, color: '#3b82f6', glow: 0 },
+        { name: 'Gas Giant',         min: 1.502e-4, color: '#d2b48c', glow: 0 },
+        { name: 'Brown Dwarf',       min: 0.01241,  color: '#ef4444', glow: 5 },
+        { name: 'Red Dwarf Star',    min: 0.07638,  color: '#ef4444', glow: 50 },
+        { name: 'Orange Dwarf Star', min: 0.6006,   color: '#f97316', glow: 80 },
+        { name: 'Yellow Dwarf Star', min: 0.8001,   color: '#facc15', glow: 130 },
+        { name: 'F-type Star',       min: 1.050,    color: '#fef08a', glow: 200 },
+        { name: 'A-type Star',       min: 1.401,    color: '#ffffff', glow: 270 },
+        { name: 'B-type Star',       min: 2.101,    color: '#bfdbfe', glow: 340 },
+        { name: 'O-type Star',       min: 16.00,    color: '#1e3a8a', glow: 420 },
+        { name: 'Giant Star',        min: 105.0,    color: '#172554', glow: 600 }
+    ];
+    const MOON_START_YEAR = 0;
+    const DISK_LOG_INTERVAL = 0.5;
+    const MOON_CHECK_INTERVAL = 1.0;
+    const SHATTER_SPEED = 0.12;                    // AU/yr relative speed that fragments a body in shatter mode
+    const KMS_PER_AUYR = 4.74;
+
+    // ================= DOM & STATE =================
+    const canvas = document.getElementById('simCanvas');
+    const ctx = canvas.getContext('2d');
+    const container = document.getElementById('canvas-container');
+
+    let bodies = [];
+    let isRunning = false;
+    let simTime = 0;
+    let stepCount = 0;
+    let totalMerges = 0;
+    let alertCount = 0;
+    let nextBodyId = 1;
+    let pending = 0;
+    let nextDiskLogTime = DISK_LOG_INTERVAL;
+    let nextMoonCheckTime = MOON_START_YEAR;
+    let moonTrack = new Map();                     // moonId -> { planetId, streak }
+    let diskLogs = [], mergeLogs = [], moonLogs = [];
+    let selectedBody = null, followedBody = null;
+
+    let config = {
+        asteroidCount: 1000,
+        starMass: 1.0,
+        diskSpread: 'medium',
+        collisionMode: 'merge',
+        timeSpeed: 1.0,
+        gravityStrength: 1.0,
+        showTrails: true,
+        showVectors: false,
+        showHill: false,
+        showStarHill: true,
+        hzMode: 'off',
+        realTimeMode: 'off',
+        astMinM: 33,     // Earth masses
+        astMaxM: 200     // Earth masses
+    };
+
+    const camera = { x: 0, y: 0, zoom: 1.0, dragging: false, moved: false, startX: 0, startY: 0, downX: 0, downY: 0 };
+
+    function resizeCanvas() {
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // ================= HELPERS =================
+    // HZ bounds for the current star, in AU. Uses the star's mass only
+    // .
+    function getAccurateHabitableZone(mass) {
+        let luminosity;
+
+        if (mass < 0.43) {
+            luminosity = 0.23 * Math.pow(mass, 2.3);
+        } else if (mass <= 2) {
+            luminosity = Math.pow(mass, 3.5);
+        } else if (mass <= 55) {
+            luminosity = 1.4 * Math.pow(mass, 3.5);
+        } else {
+            // Flatter curve for stars > 55 solar masses
+            luminosity = 32000 * mass;
+        }
+
+        const distanceFactor = Math.sqrt(luminosity);
+
+        return {
+            innerAU: +(0.95 * distanceFactor).toFixed(2),
+            outerAU: +(1.37 * distanceFactor).toFixed(2)
+        };
+    }
+    function hzBounds() {
+        return getAccurateHabitableZone(config.starMass);
+    }
+    function effectiveG() { return G_BASE * config.gravityStrength; }
+    function bodyRadius(mass) { return 0.006 * Math.cbrt(mass / 0.0001); }
+    function getStar() { return bodies.find(b => b.isStar) || bodies[0]; }
+    function getName(b) {
+        return `${stageOf(b.mass).name} #${b.id}`;
+    }
+    // Returns the visual stage for a body's mass
+    function stageOf(mass) {
+        let s = STAGES[0];
+        for (const st of STAGES) {
+            if (mass >= st.min) s = st;
+        }
+        return s;
+    }
+
+    function colorOf(b) {
+        return stageOf(b.mass).color;
+    }
+    function makeBody(x, y, vx, vy, mass, isStar) {
+        return { id: nextBodyId++, x, y, vx, vy, mass, px: x, py: y,
+                 radius: isStar ? 0.05 : bodyRadius(mass), isStar, trail: [] };
+    }
+
+    // ================= INITIALISATION =================
+    function ringRange() {
+        if (config.diskSpread === 'compact') return [0.5, 2.0];
+        if (config.diskSpread === 'wide') return [1.0, 5.0];
+        return [0.8, 3.5];
+    }
+
+    function initSimulation() {
+        bodies = [];
+        simTime = 0; stepCount = 0; totalMerges = 0; alertCount = 0;
+        nextBodyId = 1; pending = 0;
+        nextDiskLogTime = DISK_LOG_INTERVAL;
+        nextMoonCheckTime = MOON_START_YEAR;
+        moonTrack = new Map();
+        diskLogs = []; mergeLogs = []; moonLogs = [];
+        selectedBody = null; followedBody = null;
+        document.getElementById('inspector-panel').classList.add('hidden');
+
+        const M = config.starMass;
+        bodies.push(makeBody(0, 0, 0, 0, M, true));
+
+        const [minR, maxR] = ringRange();
+        const G = effectiveG();
+        for (let i = 0; i < config.asteroidCount; i++) {
+            const r = minR + (maxR - minR) * Math.random();
+            const th = Math.random() * Math.PI * 2;
+            const vMag = Math.sqrt(G * M / r) * (0.98 + Math.random() * 0.04);
+            const mass = (config.astMinM + Math.random() * (config.astMaxM - config.astMinM)) / 332946;   // Earth masses -> M_sun
+            bodies.push(makeBody(
+                Math.cos(th) * r, Math.sin(th) * r,
+                -Math.sin(th) * vMag, Math.cos(th) * vMag,
+                mass, false
+            ));
+        }
+        updateHUD();
+    }
+
+    // ================= PHYSICS =================
+    function physicsStep(dt) {
+        stepCount++;
+        simTime += dt;
+        const n = bodies.length;
+        const G = effectiveG();
+        const ax = new Float64Array(n);
+        const ay = new Float64Array(n);
+
+        // Save frame-start positions (used to report the exact pre-crash frame)
+        for (let i = 0; i < n; i++) { const b = bodies[i]; b.px = b.x; b.py = b.y; }
+
+        // 1. Pairwise gravity
+        for (let i = 0; i < n; i++) {
+            const bi = bodies[i];
+            for (let j = i + 1; j < n; j++) {
+                const bj = bodies[j];
+                const dx = bj.x - bi.x, dy = bj.y - bi.y;
+                const r2 = dx * dx + dy * dy + 1e-5;
+                const inv = G / (r2 * Math.sqrt(r2));
+                const fi = inv * bj.mass, fj = inv * bi.mass;
+                ax[i] += dx * fi; ay[i] += dy * fi;
+                ax[j] -= dx * fj; ay[j] -= dy * fj;
+            }
+        }
+
+        // 2. Kick-drift integration
+        for (let i = 0; i < n; i++) {
+            const b = bodies[i];
+            b.vx += ax[i] * dt; b.vy += ay[i] * dt;
+            b.x += b.vx * dt;   b.y += b.vy * dt;
+        }
+
+        // 3. Collisions
+        const removed = new Uint8Array(n);
+        const fragments = [];
+        for (let i = 0; i < n; i++) {
+            if (removed[i]) continue;
+            for (let j = i + 1; j < n; j++) {
+                if (removed[j] || removed[i]) continue;
+                const bi = bodies[i], bj = bodies[j];
+                const dx = bj.x - bi.x, dy = bj.y - bi.y;
+                const rs = bi.radius + bj.radius;
+                if (dx * dx + dy * dy >= rs * rs) continue;
+
+                if (config.collisionMode === 'merge') mergeBodies(i, j, removed);
+                else resolveShatter(i, j, removed, fragments);
+
+                if (removed[i]) break;
+            }
+        }
+
+        if (removed.some(v => v === 1) || fragments.length) {
+            const survivors = [];
+            for (let k = 0; k < n; k++) if (!removed[k]) survivors.push(bodies[k]);
+            bodies = survivors.concat(fragments);
+        }
+
+        // Trails
+        if (config.showTrails && stepCount % 5 === 0) {
+            for (const b of bodies) {
+                if (b.isStar) continue;
+                b.trail.push({ x: b.x, y: b.y });
+                if (b.trail.length > 40) b.trail.shift();
+            }
+        }
+
+        // Telemetry systems
+        while (simTime >= nextDiskLogTime) {
+            recordDiskLog(nextDiskLogTime);
+            nextDiskLogTime += DISK_LOG_INTERVAL;
+        }
+        while (simTime >= nextMoonCheckTime) {
+            checkPlanetMoons(nextMoonCheckTime);
+            nextMoonCheckTime += MOON_CHECK_INTERVAL;
+        }
+    }
+
+    // Merge: heavier body absorbs lighter one. Records full pre/post-crash snapshot.
+    function mergeBodies(i, j, removed) {
+        const star = getStar();
+        let h = bodies[i].mass >= bodies[j].mass ? i : j;
+        let l = h === i ? j : i;
+        if (bodies[l].isStar) { const t = h; h = l; l = t; }   // star always survives
+        const H = bodies[h], L = bodies[l];
+
+        const mH = H.mass, mL = L.mass, M = mH + mL;
+        const nameH = getName(H), nameL = getName(L);
+
+        // Pre-crash frame (positions at start of this step)
+        const preFrame = stepCount - 1;
+        const preSep = Math.hypot(L.px - H.px, L.py - H.py);
+        const preDistL = Math.hypot(L.px - star.px, L.py - star.py);
+        const preDistH = Math.hypot(H.px - star.px, H.py - star.py);
+
+        // Conserve mass, momentum and centre of mass
+        H.vx = (H.vx * mH + L.vx * mL) / M;
+        H.vy = (H.vy * mH + L.vy * mL) / M;
+        H.x  = (H.x  * mH + L.x  * mL) / M;
+        H.y  = (H.y  * mH + L.y  * mL) / M;
+        H.px = (H.px * mH + L.px * mL) / M;
+        H.py = (H.py * mH + L.py * mL) / M;
+        H.mass = M;
+        H.radius = H.isStar ? 0.05 : bodyRadius(M);
+
+        removed[l] = 1;
+        totalMerges++;
+        if (selectedBody === L) selectedBody = H;
+        if (followedBody === L) followedBody = H;
+
+        // Post-crash frame
+        const postFrame = stepCount;
+        const postDist = H.isStar ? 0 : Math.hypot(H.x - star.x, H.y - star.y);
+        const postSpeed = Math.hypot(H.vx, H.vy);
+
+        mergeLogs.push({
+            year: simTime, preFrame, postFrame,
+            small: { name: nameL, mass: mL, distStar: preDistL },
+            large: { name: nameH, mass: mH, distStar: preDistH },
+            preSep,
+            resultName: getName(H), resultMass: M,
+            postDist, postSpeed, intoStar: H.isStar
+        });
+    }
+
+    // Shatter mode: bounce slow impacts, fragment the lighter body on fast ones.
+    function resolveShatter(i, j, removed, fragments) {
+        const bi = bodies[i], bj = bodies[j];
+        const dx = bj.x - bi.x, dy = bj.y - bi.y;
+        const dist = Math.hypot(dx, dy) || 1e-9;
+        const nx = dx / dist, ny = dy / dist;
+        const rvx = bj.vx - bi.vx, rvy = bj.vy - bi.vy;
+        const vn = rvx * nx + rvy * ny;
+        if (vn >= 0) return;                                  // already separating
+        const relSpeed = Math.hypot(rvx, rvy);
+
+        if (relSpeed > SHATTER_SPEED && !bi.isStar && !bj.isStar) {
+            // Fragment the lighter body into two pieces, conserving mass and momentum
+            const L = bi.mass <= bj.mass ? i : j;
+            const Lb = bodies[L];
+            const kick = 0.5 * relSpeed;
+            const tx = -ny, ty = nx;
+            const m1 = Lb.mass * 0.6, m2 = Lb.mass * 0.4, M = Lb.mass;
+            const k1 = kick * m2 / M, k2 = -kick * m1 / M;
+            fragments.push(makeBody(Lb.x, Lb.y, Lb.vx + tx * k1, Lb.vy + ty * k1, m1, false));
+            fragments.push(makeBody(Lb.x, Lb.y, Lb.vx + tx * k2, Lb.vy + ty * k2, m2, false));
+            removed[L] = 1;
+            totalMerges++;
+            if (selectedBody === Lb) { selectedBody = null; document.getElementById('inspector-panel').classList.add('hidden'); }
+            return;
+        }
+
+        // Inelastic bounce (restitution 0.5) and positional separation
+        const e = 0.5;
+        const im1 = 1 / bi.mass, im2 = 1 / bj.mass;
+        const J = -(1 + e) * vn / (im1 + im2);
+        bi.vx -= J * nx * im1; bi.vy -= J * ny * im1;
+        bj.vx += J * nx * im2; bj.vy += J * ny * im2;
+        const overlap = (bi.radius + bj.radius) - dist;
+        if (overlap > 0) {
+            const f1 = im1 / (im1 + im2), f2 = im2 / (im1 + im2);
+            bi.x -= nx * overlap * f1; bi.y -= ny * overlap * f1;
+            bj.x += nx * overlap * f2; bj.y += ny * overlap * f2;
+        }
+        totalMerges++;
+    }
+
+    // ================= TELEMETRY =================
+    // System 1: Disk background log
+    function recordDiskLog(year) {
+        const star = getStar();
+        let away = 0;
+        const awayList = [];
+        for (const b of bodies) {
+            if (b.isStar) continue;
+            const d = Math.hypot(b.x - star.x, b.y - star.y);
+            if (d > ESCAPE_OR_OUTER_AU) {
+                away++;
+                awayList.push({
+                    name: getName(b),
+                    mass: b.mass,
+                    dist: d,
+                    speed: Math.hypot(b.vx, b.vy)
+                });
+            }
+        }
+        diskLogs.push({ year, frame: stepCount, away, active: bodies.length, merges: totalMerges, awayList });
+    }
+
+    // System 3: Planet-moon detector. A small body is "moon-like" if it is bound to a body
+    // at least 3x heavier and sits inside that body's Hill sphere. Alerts every year it persists.
+    function checkPlanetMoons(year) {
+        const star = getStar();
+        const G = effectiveG();
+        const newTrack = new Map();
+        let found = 0;
+
+        for (const m of bodies) {
+            if (m.isStar) continue;
+            let best = null, bestD = Infinity, bestHill = 0, bestRel = 0;
+
+            for (const p of bodies) {
+                if (p === m || p.isStar || p.mass <= 3 * m.mass) continue;
+                const d = Math.hypot(m.x - p.x, m.y - p.y);
+                if (d >= bestD) continue;
+
+                const aP = Math.hypot(p.x - star.x, p.y - star.y);
+                if (aP <= 0) continue;
+                const hill = aP * Math.cbrt(p.mass / (3 * star.mass));
+                if (d > hill) continue;
+
+                const rvx = m.vx - p.vx, rvy = m.vy - p.vy;
+                const rel = Math.hypot(rvx, rvy);
+                if (rel * rel >= 2 * G * p.mass / d) continue;   // not bound
+
+                best = p; bestD = d; bestHill = hill; bestRel = rel;
+            }
+
+            if (best) {
+                const prev = moonTrack.get(m.id);
+                const streak = (prev && prev.planetId === best.id) ? prev.streak + 1 : 1;
+                newTrack.set(m.id, { planetId: best.id, streak });
+                found++;
+                alertCount++;
+                moonLogs.push({
+                    year,
+                    frame: stepCount,
+                    moonName: getName(m), moonMass: m.mass,
+                    planetName: getName(best), planetMass: best.mass,
+                    separation: bestD, hill: bestHill, relSpeed: bestRel,
+                    streak
+                });
+            }
+        }
+
+        moonTrack = newTrack;
+        if (found > 0) {
+            showToast(`Year ${year.toFixed(0)}: ${found} planet-moon pair${found > 1 ? 's' : ''} detected`);
+        }
+    }
+
+    let toastTimer = null;
+    function showToast(msg) {
+        const t = document.getElementById('toast');
+        t.textContent = msg;
+        t.classList.remove('hidden');
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => t.classList.add('hidden'), 4000);
+    }
+
+    // ================= RENDERING =================
+    function render() {
+        const W = canvas.width, H = canvas.height;
+        ctx.fillStyle = '#05050a';
+        ctx.fillRect(0, 0, W, H);
+
+        const scale = AU_PIXELS * camera.zoom;
+        if (followedBody) {
+            camera.x = -followedBody.x * scale;
+            camera.y = -followedBody.y * scale;
+        }
+        const cx = W / 2 + camera.x;
+        const cy = H / 2 + camera.y;
+
+        // AU rings
+        ctx.lineWidth = 1;
+        ctx.font = '10px Inter, sans-serif';
+        for (let au = 1; au <= 5; au++) {
+            ctx.strokeStyle = 'rgba(51, 65, 85, 0.35)';
+            ctx.beginPath();
+            ctx.arc(cx, cy, au * scale, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.fillStyle = 'rgba(100, 116, 139, 0.6)';
+            ctx.fillText(`${au} AU`, cx + au * scale + 4, cy - 4);
+        }
+
+        // Trails
+        if (config.showTrails) {
+            for (const b of bodies) {
+                if (b.isStar || b.trail.length < 2) continue;
+                ctx.beginPath();
+                ctx.moveTo(cx + b.trail[0].x * scale, cy + b.trail[0].y * scale);
+                for (let t = 1; t < b.trail.length; t++) {
+                    ctx.lineTo(cx + b.trail[t].x * scale, cy + b.trail[t].y * scale);
+                }
+                ctx.strokeStyle = b.mass >= PROTOPLANET_MASS ? 'rgba(56, 189, 248, 0.35)' : 'rgba(148, 163, 184, 0.12)';
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+        }
+
+        // Gravitational (velocity) vectors
+        if (config.showVectors) {
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)';
+            ctx.lineWidth = 1.5;
+            for (const b of bodies) {
+                if (b.isStar) continue;
+                const sx = cx + b.x * scale, sy = cy + b.y * scale;
+                ctx.beginPath();
+                ctx.moveTo(sx, sy);
+                ctx.lineTo(sx + b.vx * 0.05 * scale, sy + b.vy * 0.05 * scale);
+                ctx.stroke();
+            }
+        }
+        // Habitable zone bands: red = too hot (inside), green = habitable, blue = too cold (outside)
+        if (config.hzMode !== 'off') {
+            const hz = hzBounds();
+            const innerR = hz.innerAU * scale;
+            const outerR = hz.outerAU * scale;
+            const bigR = Math.hypot(W, H) + Math.max(innerR, outerR);
+            const show = (c) => config.hzMode === 'all' || config.hzMode === c;
+
+            if (show('red')) {
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.12)';
+                ctx.beginPath();
+                ctx.arc(cx, cy, innerR, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            if (show('green')) {
+                ctx.fillStyle = 'rgba(34, 197, 94, 0.15)';
+                ctx.beginPath();
+                ctx.arc(cx, cy, outerR, 0, Math.PI * 2);
+                ctx.arc(cx, cy, innerR, 0, Math.PI * 2, true);
+                ctx.fill('evenodd');
+            }
+
+            if (show('blue')) {
+                ctx.fillStyle = 'rgba(59, 130, 246, 0.12)';
+                ctx.beginPath();
+                ctx.arc(cx, cy, bigR, 0, Math.PI * 2);
+                ctx.arc(cx, cy, outerR, 0, Math.PI * 2, true);
+                ctx.fill('evenodd');
+            }
+        }
+        // Hill spheres
+        if (config.showHill) {
+            const star = getStar();
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 4]);
+            for (const b of bodies) {
+                if (b.isStar && !config.showStarHill) continue;
+                let rHill;
+                if (b.isStar) {
+                    rHill = ESCAPE_OR_OUTER_AU;   // reference ring only
+                } else {
+                    const a = Math.hypot(b.x - star.x, b.y - star.y);
+                    if (a <= 0) continue;
+                    rHill = a * Math.cbrt(b.mass / (3 * star.mass));
+                }
+                ctx.strokeStyle = b.isStar ? 'rgba(251, 191, 36, 0.35)' : 'rgba(167, 139, 250, 0.35)';
+                ctx.beginPath();
+                ctx.arc(cx + b.x * scale, cy + b.y * scale, rHill * scale, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            ctx.setLineDash([]);
+        }
+        // Bodies
+        for (const b of bodies) {
+            const sx = cx + b.x * scale, sy = cy + b.y * scale;
+            if (sx < -30 || sx > W + 30 || sy < -30 || sy > H + 30) continue;
+
+            const stage = stageOf(b.mass);
+            const r = b.isStar ? 7 : Math.max(1.5, b.radius * scale);
+
+            if (stage.glow > 0) {
+                const haloR = r + stage.glow * camera.zoom;   // glow scales with zoom, like the body
+                const g = ctx.createRadialGradient(sx, sy, r, sx, sy, haloR);
+                g.addColorStop(0, stage.color + '99');
+                g.addColorStop(1, stage.color + '00');
+                ctx.fillStyle = g;
+                ctx.beginPath(); ctx.arc(sx, sy, haloR, 0, Math.PI * 2); ctx.fill();
+            }
+
+            ctx.fillStyle = stage.color;
+            ctx.beginPath(); ctx.arc(sx, sy, r, 0, Math.PI * 2); ctx.fill();
+
+            if (selectedBody === b || followedBody === b) {
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(sx, sy, Math.max(6, b.radius * scale) + 4, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+    }
+
+    // ================= MAIN LOOP =================
+    let lastTs = performance.now();
+    let frameTick = 0;
+    function mainLoop(ts) {
+        const realDt = Math.min(0.1, (ts - lastTs) / 1000);
+        lastTs = ts;
+
+        if (isRunning) {
+            // Real-time modes ignore Time Speed. "Off" uses the normal rate.
+            const simSecPerRealSec = REAL_MODE_SECONDS[config.realTimeMode];
+            const yearsPerSecond = simSecPerRealSec
+                ? simSecPerRealSec / SECONDS_PER_YEAR
+                : YEARS_PER_SECOND * config.timeSpeed;
+            pending += realDt * yearsPerSecond;         let steps = 0;
+            while (pending >= PHYS_DT && steps < MAX_STEPS_PER_FRAME) {
+                physicsStep(PHYS_DT);
+                pending -= PHYS_DT;
+                steps++;
+            }
+            if (pending > 0.05) pending = 0.05;   // fall behind gracefully instead of freezing
+            frameTick++;
+            if (frameTick % 4 === 0) updateHUD();
+        }
+
+        render();
+        requestAnimationFrame(mainLoop);
+    }
+
+    // ================= HUD & INSPECTOR =================
+    function updateHUD() {
+        document.getElementById('hud-bodies').textContent = bodies.length;
+
+        let largest = null;
+        for (const b of bodies) {
+            if (b.isStar) continue;
+            if (!largest || b.mass > largest.mass) largest = b;
+        }
+        document.getElementById('hud-maxmass').textContent = largest
+            ? `${getName(largest)} (${largest.mass.toFixed(4)} M☉)`
+            : 'None yet';
+
+        document.getElementById('hud-time').textContent = simTime.toFixed(2) + ' yrs';
+        document.getElementById('hud-frame').textContent = stepCount;
+        document.getElementById('hud-merges').textContent = totalMerges;
+        document.getElementById('hud-alerts').textContent = alertCount;
+
+        document.getElementById('lbl-disk').textContent = `Export Disk Log (${diskLogs.length} entries)`;
+        document.getElementById('lbl-merges').textContent = `Export Merge Log (${mergeLogs.length} events)`;
+        document.getElementById('lbl-moons').textContent = `Export Planet-Moon Log (${moonLogs.length} alerts)`;
+
+        if (selectedBody) {
+            const star = getStar();
+            const dist = Math.hypot(selectedBody.x - star.x, selectedBody.y - star.y);
+            const vel = Math.hypot(selectedBody.vx, selectedBody.vy);
+            document.getElementById('insp-name').textContent = getName(selectedBody);
+            document.getElementById('insp-mass').textContent = selectedBody.mass.toFixed(6) + ' M☉';
+            document.getElementById('insp-dist').textContent = dist.toFixed(3) + ' AU';
+            document.getElementById('insp-vel').textContent = `${vel.toFixed(3)} AU/yr (${(vel * KMS_PER_AUYR).toFixed(1)} km/s)`;
+        }
+    }
+
+function selectBody(b) {
+        selectedBody = b;
+        document.getElementById('sidebar').classList.remove('hidden');
+        document.getElementById('inspector-panel').classList.remove('hidden');
+        updateFocusButton();
+        updateHUD();
+    }
+
+    function updateFocusButton() {
+        document.getElementById('btn-focus-body').textContent =
+            (selectedBody && followedBody === selectedBody) ? 'Unlock Camera' : 'Follow / Lock Camera';
+    }
+
+    // ================= LOG EXPORTS =================
+    function downloadFile(filename, content) {
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = filename;
+        document.body.appendChild(a); a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    const LOG_HEADER = () => [
+        `Initial Asteroids: ${config.asteroidCount} | Star Mass: ${config.starMass.toFixed(1)} M☉ | Disk: ${config.diskSpread} | Mode: ${config.collisionMode}`,
+        `Time Speed: ${config.timeSpeed.toFixed(1)}x | G multiplier: ${config.gravityStrength.toFixed(1)}x`,
+        '----------------------------------------------------------------'
+    ].join('\n') + '\n';
+
+    document.getElementById('btn-export-disk').addEventListener('click', () => {
+        let t = `=== ProtoDisk N-Body | System 1: Disk Background Log ===\n` + LOG_HEADER();
+        t += `Total Entries: ${diskLogs.length}\n`;
+        for (const l of diskLogs) {
+            t += `Year ${l.year.toFixed(1)} | Frame ${l.frame} | Bodies Away from Star (>${ESCAPE_OR_OUTER_AU} AU): ${l.away} | Total Active Bodies: ${l.active} | Merges: ${l.merges}\n`;
+            for (const a of l.awayList) {
+                t += `    ${a.name} | Mass: ${a.mass.toFixed(7)} M☉ | Distance from star: ${a.dist.toFixed(4)} AU | Speed: ${a.speed.toFixed(4)} AU/yr\n`;            }
+        }
+        downloadFile(`protodisk-disk-log-${simTime.toFixed(1)}yrs.txt`, t);
+    });
+
+    document.getElementById('btn-export-merges').addEventListener('click', () => {
+        let t = `=== ProtoDisk N-Body | System 2: Merge Event Log ===\n` + LOG_HEADER();
+        t += `Total Merge Events: ${mergeLogs.length}\n\n`;
+        mergeLogs.forEach((m, idx) => {
+            t += `--- Merge #${idx + 1} (Year ${m.year.toFixed(3)}) ---\n`;
+            t += `Victim 1 (lighter): ${m.small.name} | Mass ${m.small.mass.toFixed(7)} M☉ | Distance from star, pre-crash frame ${m.preFrame}: ${m.small.distStar.toFixed(5)} AU\n`;
+            t += `Victim 2 (heavier): ${m.large.name} | Mass ${m.large.mass.toFixed(7)} M☉ | Distance from star, pre-crash frame ${m.preFrame}: ${m.large.distStar.toFixed(5)} AU\n`;
+            t += `Separation of victims, pre-crash frame ${m.preFrame}: ${m.preSep.toFixed(6)} AU\n`;
+            t += `Result: ${m.resultName} | Mass ${m.resultMass.toFixed(7)} M☉\n`;
+            t += m.intoStar
+                ? `Post-crash frame ${m.postFrame}: absorbed into protostar\n\n`
+                : `Post-crash frame ${m.postFrame}: merged body distance from star ${m.postDist.toFixed(5)} AU | Speed ${m.postSpeed.toFixed(4)} AU/yr (${(m.postSpeed * KMS_PER_AUYR).toFixed(2)} km/s)\n\n`;
+        });
+        downloadFile(`protodisk-merge-log-${simTime.toFixed(1)}yrs.txt`, t);
+    });
+
+    document.getElementById('btn-export-moons').addEventListener('click', () => {
+        let t = `=== ProtoDisk N-Body | System 3: Planet-Moon Detector Log (from Year ${MOON_START_YEAR}) ===\n` + LOG_HEADER();
+        t += `Total Alerts: ${moonLogs.length}\n`;
+        for (const a of moonLogs) {
+            t += `Year ${a.year.toFixed(1)} | Frame ${a.frame} | ALERT | Moon: ${a.moonName} (${a.moonMass.toFixed(7)} M☉) | Planet: ${a.planetName} (${a.planetMass.toFixed(6)} M☉) | Separation: ${a.separation.toFixed(5)} AU | Hill radius: ${a.hill.toFixed(4)} AU | Relative speed: ${a.relSpeed.toFixed(5)} AU/yr | Consecutive yearly checks: ${a.streak}\n`;
+        }
+        downloadFile(`protodisk-planet-moon-log-${simTime.toFixed(1)}yrs.txt`, t);
+    });
+
+    // ================= UI BINDINGS =================
+    document.getElementById('slider-asteroid-count').addEventListener('input', e => {
+        config.asteroidCount = parseInt(e.target.value);
+        document.getElementById('val-asteroid-count').textContent = config.asteroidCount;
+    });
+
+    document.getElementById('slider-star-mass').addEventListener('input', e => {
+        const minLog = Math.log(0.1);
+        const maxLog = Math.log(150);
+        let mass = Math.exp(minLog + ((maxLog - minLog) / 1000) * parseFloat(e.target.value));
+
+
+        if (mass < 10) {
+            mass = Math.round(mass * 100) / 100;
+        } else {
+            mass = Math.round(mass * 10) / 10;
+        }
+
+        config.starMass = mass;
+        document.getElementById('val-star-mass').textContent = config.starMass.toFixed(mass >= 10 ? 1 : 2) + ' M☉';
+    });
+
+    document.getElementById('select-disk-spread').addEventListener('change', e => {
+        config.diskSpread = e.target.value;
+        document.getElementById('val-disk-spread').textContent = e.target.options[e.target.selectedIndex].text.split(' ')[0];
+    });
+
+    document.getElementById('select-collision-mode').addEventListener('change', e => {
+        config.collisionMode = e.target.value;
+        document.getElementById('val-collision-mode').textContent = e.target.value === 'merge' ? 'Merge' : 'Shatter';
+    });
+
+    document.getElementById('slider-time-speed').addEventListener('input', e => {
+        config.timeSpeed = parseFloat(e.target.value);
+        document.getElementById('val-time-speed').textContent = config.timeSpeed.toFixed(1) + 'x';
+    });
+
+    document.getElementById('slider-gravity').addEventListener('input', e => {
+        config.gravityStrength = parseFloat(e.target.value);
+        document.getElementById('val-gravity').textContent = config.gravityStrength.toFixed(1) + 'x';
+    });
+
+    document.getElementById('toggle-trails').addEventListener('change', e => { config.showTrails = e.target.checked; });
+    document.getElementById('toggle-vectors').addEventListener('change', e => { config.showVectors = e.target.checked; });
+    document.getElementById('toggle-hill').addEventListener('change', e => { config.showHill = e.target.checked; });
+    document.getElementById('toggle-star-hill').addEventListener('change', e => { config.showStarHill = e.target.checked; });
+    // Simulated seconds that pass per real second in each mode
+    const REAL_MODE_SECONDS = {
+        realtime: 1,
+        day: 86400,
+        week: 604800,
+        month: 2629800,     // average month: 30.4375 days
+        hour: 3600          // 1 hour = 3600 seconds
+    };
+    document.getElementById('select-realtime').addEventListener('change', e => { config.realTimeMode = e.target.value; });    document.getElementById('select-hz').addEventListener('change', e => { config.hzMode = e.target.value; });
+    // Min and max asteroid mass sliders (Earth masses). Min can't go above max, and max can't go below min.
+    const astMinSlider = document.getElementById('slider-ast-min');
+    const astMaxSlider = document.getElementById('slider-ast-max');
+    astMinSlider.addEventListener('input', e => {
+        config.astMinM = parseFloat(e.target.value);
+        if (config.astMinM > config.astMaxM) {
+            config.astMaxM = config.astMinM;
+            astMaxSlider.value = config.astMinM;
+            document.getElementById('val-ast-max').textContent = config.astMaxM.toFixed(0) + ' M⊕';
+        }
+        document.getElementById('val-ast-min').textContent = config.astMinM.toFixed(0) + ' M⊕';
+    });
+    astMaxSlider.addEventListener('input', e => {
+        config.astMaxM = parseFloat(e.target.value);
+        if (config.astMaxM < config.astMinM) {
+            config.astMinM = config.astMaxM;
+            astMinSlider.value = config.astMaxM;
+            document.getElementById('val-ast-min').textContent = config.astMinM.toFixed(0) + ' M⊕';
+        }
+        document.getElementById('val-ast-max').textContent = config.astMaxM.toFixed(0) + ' M⊕';
+    });
+
+    document.getElementById('btn-apply-config').addEventListener('click', initSimulation);
+
+    const playBtn = document.getElementById('btn-play-pause');
+    function setPlayUI() {
+        document.getElementById('play-icon').className = isRunning ? 'fa-solid fa-pause' : 'fa-solid fa-play';
+        document.getElementById('play-text').textContent = isRunning ? 'Pause Sim' : (simTime > 0 ? 'Resume Sim' : 'Start Sim');
+        const badge = document.getElementById('status-badge');
+        badge.textContent = isRunning ? 'Running' : (simTime > 0 ? 'Paused' : 'Configuring');
+        badge.className = isRunning
+            ? 'text-xs px-2 py-0.5 bg-emerald-950 border border-emerald-800/60 text-emerald-300 rounded-md font-mono'
+            : 'text-xs px-2 py-0.5 bg-slate-800 border border-slate-700 text-slate-300 rounded-md font-mono';
+    }
+    playBtn.addEventListener('click', () => { isRunning = !isRunning; setPlayUI(); });
+
+    document.getElementById('btn-restart').addEventListener('click', () => {
+        isRunning = false;
+        initSimulation();
+        setPlayUI();
+    });
+
+    document.getElementById('btn-zoom-in').addEventListener('click', () => { camera.zoom = Math.min(6, camera.zoom * 1.25); });
+    document.getElementById('btn-zoom-out').addEventListener('click', () => { camera.zoom = Math.max(0.2, camera.zoom / 1.25); });
+    document.getElementById('btn-reset-view').addEventListener('click', () => {
+        camera.x = 0; camera.y = 0; camera.zoom = 1.0; followedBody = null; updateFocusButton();
+    });
+
+    document.getElementById('btn-close-inspector').addEventListener('click', () => {
+        selectedBody = null; followedBody = null;
+        document.getElementById('inspector-panel').classList.add('hidden');
+    });
+
+    document.getElementById('btn-focus-body').addEventListener('click', () => {
+        if (!selectedBody) return;
+        followedBody = (followedBody === selectedBody) ? null : selectedBody;
+        updateFocusButton();
+    });
+
+    function showPanel(name) {
+        const sb = document.getElementById('sidebar');
+        const teleport = document.getElementById('panel-teleport');
+        const isOpen = !sb.classList.contains('hidden');
+        const current = teleport.classList.contains('hidden') ? 'controls' : 'teleport';
+        if (isOpen && current === name) { sb.classList.add('hidden'); return; }
+        sb.classList.remove('hidden');
+        document.getElementById('panel-controls').classList.toggle('hidden', name !== 'controls');
+        teleport.classList.toggle('hidden', name !== 'teleport');
+    }
+    document.getElementById('toggle-sidebar').addEventListener('click', () => showPanel('controls'));
+    document.getElementById('teleport-btn').addEventListener('click', () => showPanel('teleport'));
+
+    const modalInfo = document.getElementById('modal-info');
+    document.getElementById('info-btn').addEventListener('click', () => modalInfo.classList.remove('hidden'));
+    document.getElementById('modal-close').addEventListener('click', () => modalInfo.classList.add('hidden'));
+    document.getElementById('modal-got-it').addEventListener('click', () => modalInfo.classList.add('hidden'));
+    // ================= TELEPORTER =================
+    let teleportSelectedId = null;
+    const teleportList = document.getElementById('teleport-list');
+    const teleportSearch = document.getElementById('teleport-search');
+    const teleportGo = document.getElementById('teleport-go');
+
+    function renderTeleportList() {
+        const q = teleportSearch.value.trim().toLowerCase();
+        const matches = bodies.filter(b => getName(b).toLowerCase().includes(q));
+        const shown = matches.slice(0, 200);
+        teleportList.innerHTML = '';
+        for (const b of shown) {
+            const row = document.createElement('button');
+            const isSel = b.id === teleportSelectedId;
+            row.className = 'w-full text-left px-3 py-2 flex justify-between items-center hover:bg-slate-800 ' +
+                (isSel ? 'bg-emerald-900/50 text-emerald-200' : 'text-slate-300');
+            const nameSpan = document.createElement('span');
+            nameSpan.textContent = getName(b);
+            const massSpan = document.createElement('span');
+            massSpan.className = 'text-slate-500';
+            massSpan.textContent = b.mass.toExponential(2) + ' M☉';
+            row.appendChild(nameSpan);
+            row.appendChild(massSpan);
+            row.addEventListener('click', () => {
+                teleportSelectedId = b.id;
+                renderTeleportList();
+                updateTeleportButton();
+            });
+            teleportList.appendChild(row);
+        }
+        document.getElementById('teleport-count').textContent = matches.length > shown.length
+            ? `Showing 200 of ${matches.length}. Type to narrow the list.`
+            : `${matches.length} found`;
+    }
+
+    function updateTeleportButton() {
+        const target = bodies.find(b => b.id === teleportSelectedId);
+        teleportGo.disabled = !target;
+        teleportGo.textContent = target ? `Teleport to ${getName(target)}` : 'Select a body first';
+    }
+
+    function teleportTo(b) {
+        followedBody = null;
+        camera.x = -b.x * AU_PIXELS * camera.zoom;
+        camera.y = -b.y * AU_PIXELS * camera.zoom;
+        selectBody(b);
+        updateFocusButton();
+    }
+
+    teleportSearch.addEventListener('input', renderTeleportList);
+    teleportGo.addEventListener('click', () => {
+        const target = bodies.find(b => b.id === teleportSelectedId);
+        if (target) teleportTo(target);
+    });
+
+    // Refresh the list every second so merges and movement stay current
+    setInterval(() => { renderTeleportList(); updateTeleportButton(); }, 1000);
+    // ================= CANVAS INTERACTION =================
+    function pickBodyAt(mx, my) {
+        const W = canvas.width, H = canvas.height;
+        const scale = AU_PIXELS * camera.zoom;
+        const cx = W / 2 + camera.x, cy = H / 2 + camera.y;
+        let best = null, bestD = Infinity;
+        for (const b of bodies) {
+            const sx = cx + b.x * scale, sy = cy + b.y * scale;
+            const d = Math.hypot(sx - mx, sy - my);
+            const hit = b.isStar ? 14 : Math.max(8, b.radius * scale + 4);
+            if (d < hit && d < bestD) { best = b; bestD = d; }
+        }
+        return best;
+    }
+
+    function canvasPos(clientX, clientY) {
+        const r = canvas.getBoundingClientRect();
+        return { x: clientX - r.left, y: clientY - r.top };
+    }
+
+    canvas.addEventListener('mousedown', e => {
+        if (e.button !== 0) return;
+        camera.dragging = true;
+        camera.moved = false;
+        camera.downX = e.clientX; camera.downY = e.clientY;
+        camera.startX = e.clientX - camera.x;
+        camera.startY = e.clientY - camera.y;
+    });
+
+    window.addEventListener('mousemove', e => {
+        if (!camera.dragging) return;
+        if (!camera.moved && Math.hypot(e.clientX - camera.downX, e.clientY - camera.downY) > 4) camera.moved = true;
+        if (camera.moved) {
+            camera.x = e.clientX - camera.startX;
+            camera.y = e.clientY - camera.startY;
+            followedBody = null;
+            updateFocusButton();
+        }
+    });
+
+    window.addEventListener('mouseup', e => {
+        if (!camera.dragging) return;
+        camera.dragging = false;
+        if (!camera.moved && e.target === canvas) {
+            const p = canvasPos(e.clientX, e.clientY);
+            const b = pickBodyAt(p.x, p.y);
+            if (b) selectBody(b);
+        }
+    });
+
+    canvas.addEventListener('wheel', e => {
+        e.preventDefault();
+        camera.zoom = Math.min(6, Math.max(0.2, camera.zoom * (e.deltaY < 0 ? 1.15 : 0.87)));
+    }, { passive: false });
+
+    // Touch: one finger pans/taps, two fingers pinch-zoom
+    let pinchDist = 0;
+    canvas.addEventListener('touchstart', e => {
+        if (e.touches.length === 1) {
+            const t = e.touches[0];
+            camera.dragging = true; camera.moved = false;
+            camera.downX = t.clientX; camera.downY = t.clientY;
+            camera.startX = t.clientX - camera.x;
+            camera.startY = t.clientY - camera.y;
+        } else if (e.touches.length === 2) {
+            camera.dragging = false;
+            pinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+        }
+    }, { passive: true });
+
+    canvas.addEventListener('touchmove', e => {
+        if (e.touches.length === 2) {
+            const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+            if (pinchDist > 0) camera.zoom = Math.min(6, Math.max(0.2, camera.zoom * (d / pinchDist)));
+            pinchDist = d;
+        } else if (camera.dragging && e.touches.length === 1) {
+            const t = e.touches[0];
+            if (!camera.moved && Math.hypot(t.clientX - camera.downX, t.clientY - camera.downY) > 6) camera.moved = true;
+            if (camera.moved) {
+                camera.x = t.clientX - camera.startX;
+                camera.y = t.clientY - camera.startY;
+                followedBody = null;
+                updateFocusButton();
+            }
+        }
+    }, { passive: true });
+
+    canvas.addEventListener('touchend', e => {
+        if (camera.dragging && !camera.moved && e.changedTouches.length) {
+            const t = e.changedTouches[0];
+            const p = canvasPos(t.clientX, t.clientY);
+            const b = pickBodyAt(p.x, p.y);
+            if (b) selectBody(b);
+        }
+        if (e.touches.length === 0) camera.dragging = false;
+    });
+
+    // ================= START =================
+    window.addEventListener('load', () => {
+        initSimulation();
+        setPlayUI();
+        requestAnimationFrame(mainLoop);
+    });
+    </script>
+</body>
+</html>
