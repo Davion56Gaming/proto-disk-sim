@@ -4,7 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Protoplanetary Disk N-Body Simulator</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script 
+        src="tailwind.js" 
+        onerror="let s = document.createElement('script'); s.src = 'https://cdn.tailwindcss.com'; document.head.appendChild(s);">
+    </script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -37,6 +42,10 @@
             <button id="teleport-btn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-medium rounded-lg border border-slate-700 transition flex items-center space-x-1.5">
                 <i class="fa-solid fa-location-crosshairs text-emerald-400"></i>
                 <span class="hidden sm:inline">Teleporter</span>
+            </button>
+            <button id="pref-btn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-medium rounded-lg border border-slate-700 transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-gear text-violet-400"></i>
+                <span class="hidden sm:inline">Preferences</span>
             </button>
             <button id="info-btn" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 active:scale-95 text-xs font-medium rounded-lg border border-slate-700 transition flex items-center space-x-1.5">
                 <i class="fa-solid fa-circle-info text-amber-400"></i>
@@ -288,6 +297,44 @@
                     </div>
                 </div>
             </div>
+            <div id="panel-prefs" class="hidden space-y-6">
+                <h3 class="font-semibold text-xs text-violet-400 uppercase tracking-wider flex items-center space-x-1.5">
+                    <i class="fa-solid fa-gear"></i>
+                    <span>Preferences</span>
+                </h3>
+                <div class="space-y-1.5">
+                    <label class="text-xs text-slate-300">Speed</label>
+                    <select id="pref-speed" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+                        <option value="AU/yr" selected>AU/yr (default)</option>
+                        <option value="km/s">km/s</option>
+                        <option value="mph">mph</option>
+                        <option value="km/h">km/h</option>
+                    </select>
+                    <button data-reset="speed" class="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium transition">Set back to default for speed</button>
+                </div>
+                <div class="space-y-1.5">
+                    <label class="text-xs text-slate-300">Mass</label>
+                    <select id="pref-mass" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+                        <option value="M☉" selected>M☉ (Sun, default)</option>
+                        <option value="M⊕">M⊕ (Earth)</option>
+                        <option value="M♃">M♃ (Jupiter)</option>
+                    </select>
+                    <button data-reset="mass" class="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium transition">Set back to default for mass</button>
+                </div>
+                <div class="space-y-1.5">
+                    <label class="text-xs text-slate-300">Distance</label>
+                    <select id="pref-dist" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+                        <option value="AU" selected>AU (default)</option>
+                        <option value="miles">miles</option>
+                        <option value="km">km</option>
+                        <option value="ly">ly (light-years)</option>
+                    </select>
+                    <button data-reset="dist" class="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 rounded-lg text-xs font-medium transition">Set back to default for distance</button>
+                </div>
+                <div class="pt-6">
+                    <button id="pref-reset-all" class="w-full py-1.5 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 border border-rose-800/50 rounded-lg text-xs font-medium transition">Set back to default for all</button>
+                </div>
+            </div>
             <div id="panel-teleport" class="hidden flex-1 min-h-0 flex flex-col space-y-3">
                 <h3 class="font-semibold text-xs text-emerald-400 uppercase tracking-wider flex items-center space-x-1.5">
                     <i class="fa-solid fa-location-crosshairs"></i>
@@ -295,7 +342,25 @@
                 </h3>
                 <input type="text" id="teleport-search" placeholder="Search by body name to find a body."
                     class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
-                <div id="teleport-list" class="flex-1 min-h-0 overflow-y-auto bg-slate-950/60 border border-slate-800 rounded-xl text-xs font-mono divide-y divide-slate-800"></div>
+                <div class="space-y-1.5">
+                    <div class="flex gap-2">
+                        <select id="select-filter-type" class="flex-1 min-w-0 bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+                            <option value="off" selected>Filter by... Off</option>
+                            <option value="distance">Distance</option>
+                            <option value="mass">Mass</option>
+                            <option value="speed">Speed</option>
+                        </select>
+                        <select id="select-filter-cond" class="hidden flex-1 min-w-0 bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+                            <option value="lowest">of Lowest</option>
+                            <option value="highest">of Highest</option>
+                        </select>
+                    </div>
+                    <label id="filter-star-row" class="hidden items-center justify-between text-xs text-slate-300">
+                        <span>Include Star (#1)</span>
+                        <input type="checkbox" id="toggle-filter-star" checked class="accent-cyan-500 w-4 h-4 cursor-pointer">
+                    </label>
+                </div>
+                <div id="teleport-list" class="flex-1 min-h-0 overflow-y-auto bg-slate-950/60 border border-slate-800 rounded-xl text-xs font-mono"></div>
                 <p id="teleport-count" class="text-[11px] text-slate-500"></p>
                 <button id="teleport-go" disabled class="w-full py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-lg text-xs font-semibold transition disabled:opacity-40 disabled:cursor-not-allowed">Select a body first</button>
 
@@ -966,9 +1031,9 @@
             const dist = Math.hypot(selectedBody.x - star.x, selectedBody.y - star.y);
             const vel = Math.hypot(selectedBody.vx, selectedBody.vy);
             document.getElementById('insp-name').textContent = getName(selectedBody);
-            document.getElementById('insp-mass').textContent = selectedBody.mass.toFixed(6) + ' M☉';
-            document.getElementById('insp-dist').textContent = dist.toFixed(3) + ' AU';
-            document.getElementById('insp-vel').textContent = `${vel.toFixed(3)} AU/yr (${(vel * KMS_PER_AUYR).toFixed(1)} km/s)`;
+            document.getElementById('insp-mass').textContent = fmtMass(selectedBody.mass);
+            document.getElementById('insp-dist').textContent = fmtDist(dist);
+            document.getElementById('insp-vel').textContent = fmtSpeed(vel);
         }
     }
 
@@ -1039,6 +1104,44 @@ function selectBody(b) {
     });
 
     // ================= UI BINDINGS =================
+    // ================= PREFERENCES (units) =================
+    // All internal values are in M☉, AU, and AU/yr. These convert them for display only.
+    const prefs = { speed: 'AU/yr', mass: 'M☉', dist: 'AU' };
+    const SPEED_FACTORS = { 'AU/yr': 1, 'km/s': 4.74047, 'mph': 10603.1, 'km/h': 17064.2 };
+    const MASS_FACTORS = { 'M☉': 1, 'M⊕': 332946, 'M♃': 1047.56 };
+    const DIST_FACTORS = { 'AU': 1, 'miles': 92955807, 'km': 149597871, 'ly': 1.5813e-5 };
+
+    function fmtNum(v) {
+        const a = Math.abs(v);
+        if (a === 0) return '0';
+        if (a >= 1000) return Math.round(v).toLocaleString();
+        if (a < 0.01) return v.toExponential(2);
+        return v.toFixed(3);
+    }
+    function fmtSpeed(auPerYr) { return fmtNum(auPerYr * SPEED_FACTORS[prefs.speed]) + ' ' + prefs.speed; }
+    function fmtMass(msun)     { return fmtNum(msun * MASS_FACTORS[prefs.mass]) + ' ' + prefs.mass; }
+    function fmtDist(au)       { return fmtNum(au * DIST_FACTORS[prefs.dist]) + ' ' + prefs.dist; }
+
+    ['speed', 'mass', 'dist'].forEach(k => {
+        const el = document.getElementById('pref-' + k);
+        el.addEventListener('change', () => { prefs[k] = el.value; updateHUD(); renderTeleportList(); });
+    });
+    const PREF_DEFAULTS = { speed: 'AU/yr', mass: 'M☉', dist: 'AU' };
+    function applyPref(k, v) {
+        prefs[k] = v;
+        document.getElementById('pref-' + k).value = v;
+        updateHUD();
+        renderTeleportList();
+    }
+    document.querySelectorAll('[data-reset]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const k = btn.dataset.reset;
+            applyPref(k, PREF_DEFAULTS[k]);
+        });
+    });
+    document.getElementById('pref-reset-all').addEventListener('click', () => {
+        for (const k in PREF_DEFAULTS) applyPref(k, PREF_DEFAULTS[k]);
+    });
     document.getElementById('slider-asteroid-count').addEventListener('input', e => {
         config.asteroidCount = parseInt(e.target.value);
         document.getElementById('val-asteroid-count').textContent = config.asteroidCount;
@@ -1154,16 +1257,15 @@ function selectBody(b) {
 
     function showPanel(name) {
         const sb = document.getElementById('sidebar');
-        const teleport = document.getElementById('panel-teleport');
-        const isOpen = !sb.classList.contains('hidden');
-        const current = teleport.classList.contains('hidden') ? 'controls' : 'teleport';
-        if (isOpen && current === name) { sb.classList.add('hidden'); return; }
+        const panels = { controls: 'panel-controls', teleport: 'panel-teleport', prefs: 'panel-prefs' };
+        const current = Object.keys(panels).find(k => !document.getElementById(panels[k]).classList.contains('hidden'));
+        if (!sb.classList.contains('hidden') && current === name) { sb.classList.add('hidden'); return; }
         sb.classList.remove('hidden');
-        document.getElementById('panel-controls').classList.toggle('hidden', name !== 'controls');
-        teleport.classList.toggle('hidden', name !== 'teleport');
+        for (const k in panels) document.getElementById(panels[k]).classList.toggle('hidden', k !== name);
     }
     document.getElementById('toggle-sidebar').addEventListener('click', () => showPanel('controls'));
     document.getElementById('teleport-btn').addEventListener('click', () => showPanel('teleport'));
+    document.getElementById('pref-btn').addEventListener('click', () => showPanel('prefs'));
 
     const modalInfo = document.getElementById('modal-info');
     document.getElementById('info-btn').addEventListener('click', () => modalInfo.classList.remove('hidden'));
@@ -1175,34 +1277,88 @@ function selectBody(b) {
     const teleportSearch = document.getElementById('teleport-search');
     const teleportGo = document.getElementById('teleport-go');
 
-    function renderTeleportList() {
-        const q = teleportSearch.value.trim().toLowerCase();
-        const matches = bodies.filter(b => getName(b).toLowerCase().includes(q));
-        const shown = matches.slice(0, 200);
-        teleportList.innerHTML = '';
-        for (const b of shown) {
+    // ----- Virtualized teleporter list -----
+    const TP_ROW_H = 40;       // fixed row height in px (must match the row style below)
+    const TP_BUFFER = 100;     // extra rows rendered above and below the visible area
+    let tpRows = [];           // full filtered + sorted list, held in memory
+    let tpScrollQueued = false;
+
+    teleportList.style.position = 'relative';
+    const tpSpacer = document.createElement('div');      // gives the scrollbar the full height
+    const tpWindow = document.createElement('div');      // holds only the rendered rows
+    tpWindow.style.position = 'absolute';
+    tpWindow.style.left = '0';
+    tpWindow.style.right = '0';
+    tpWindow.style.top = '0';
+    teleportList.appendChild(tpSpacer);
+    teleportList.appendChild(tpWindow);
+
+    function tpRenderWindow() {
+        const vh = teleportList.clientHeight || 300;
+        const first = Math.floor(teleportList.scrollTop / TP_ROW_H);
+        const visibleCount = Math.ceil(vh / TP_ROW_H) + 1;
+        const start = Math.max(0, first - TP_BUFFER);
+        const end = Math.min(tpRows.length, first + visibleCount + TP_BUFFER);
+
+        tpWindow.innerHTML = '';
+        tpWindow.style.top = (start * TP_ROW_H) + 'px';
+
+        for (let i = start; i < end; i++) {
+            const b = tpRows[i];
             const row = document.createElement('button');
             const isSel = b.id === teleportSelectedId;
-            row.className = 'w-full text-left px-3 py-2 flex justify-between items-center hover:bg-slate-800 ' +
+            row.style.height = TP_ROW_H + 'px';
+            row.className = 'w-full text-left px-2 flex justify-between items-center border-b border-slate-800 hover:bg-slate-800 ' +
                 (isSel ? 'bg-emerald-900/50 text-emerald-200' : 'text-slate-300');
             const nameSpan = document.createElement('span');
+            nameSpan.className = 'truncate';
             nameSpan.textContent = getName(b);
-            const massSpan = document.createElement('span');
-            massSpan.className = 'text-slate-500';
-            massSpan.textContent = b.mass.toExponential(2) + ' M☉';
+            const star = getStar();
+            const dist = Math.hypot(b.x - star.x, b.y - star.y);
+            const speed = Math.hypot(b.vx, b.vy);
+            const infoSpan = document.createElement('span');
+            infoSpan.className = 'text-slate-500 text-right leading-tight text-[9px] shrink-0 ml-2';
+            infoSpan.innerHTML = `${fmtMass(b.mass)}<br>${fmtDist(dist)}<br>${fmtSpeed(speed)}`;
             row.appendChild(nameSpan);
-            row.appendChild(massSpan);
+            row.appendChild(infoSpan);
             row.addEventListener('click', () => {
                 teleportSelectedId = b.id;
                 renderTeleportList();
                 updateTeleportButton();
             });
-            teleportList.appendChild(row);
+            tpWindow.appendChild(row);
         }
-        document.getElementById('teleport-count').textContent = matches.length > shown.length
-            ? `Showing 200 of ${matches.length}. Type to narrow the list.`
-            : `${matches.length} found`;
     }
+
+    function renderTeleportList() {
+        const q = teleportSearch.value.trim().toLowerCase();
+        let matches = bodies.filter(b => getName(b).toLowerCase().includes(q));
+
+        const fType = document.getElementById('select-filter-type').value;
+        const fCond = document.getElementById('select-filter-cond').value;
+        if (!document.getElementById('toggle-filter-star').checked) {
+            matches = matches.filter(b => !b.isStar);
+        }
+        if (fType !== 'off') {
+            const starNow = getStar();
+            const valOf = b => fType === 'distance' ? Math.hypot(b.x - starNow.x, b.y - starNow.y)
+                             : fType === 'mass' ? b.mass
+                             : Math.hypot(b.vx, b.vy);
+            matches = matches.slice().sort((a, b) => fCond === 'lowest' ? valOf(a) - valOf(b) : valOf(b) - valOf(a));
+        }
+
+        tpRows = matches;
+        tpSpacer.style.height = (tpRows.length * TP_ROW_H) + 'px';
+        document.getElementById('teleport-count').textContent = `${tpRows.length} matching · scroll to browse`;
+        tpRenderWindow();
+    }
+
+    // Re-render only the rows in view when scrolling (throttled to one frame)
+    teleportList.addEventListener('scroll', () => {
+        if (tpScrollQueued) return;
+        tpScrollQueued = true;
+        requestAnimationFrame(() => { tpScrollQueued = false; tpRenderWindow(); });
+    });
 
     function updateTeleportButton() {
         const target = bodies.find(b => b.id === teleportSelectedId);
@@ -1219,6 +1375,18 @@ function selectBody(b) {
     }
 
     teleportSearch.addEventListener('input', renderTeleportList);
+    const filterType = document.getElementById('select-filter-type');
+    const filterCond = document.getElementById('select-filter-cond');
+    const filterStarRow = document.getElementById('filter-star-row');
+    filterType.addEventListener('change', () => {
+        const on = filterType.value !== 'off';
+        filterCond.classList.toggle('hidden', !on);
+        filterStarRow.classList.toggle('hidden', !on);
+        filterStarRow.classList.toggle('flex', on);
+        renderTeleportList();
+    });
+    filterCond.addEventListener('change', renderTeleportList);
+    document.getElementById('toggle-filter-star').addEventListener('change', renderTeleportList);
     teleportGo.addEventListener('click', () => {
         const target = bodies.find(b => b.id === teleportSelectedId);
         if (target) teleportTo(target);
