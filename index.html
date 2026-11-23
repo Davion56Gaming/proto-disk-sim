@@ -168,7 +168,18 @@
 
                     <div class="space-y-1.5">
                         <div class="flex justify-between text-xs">
-                            <label class="text-slate-300 font-medium">Disk Spread</label>
+                            <label class="text-slate-300 font-medium">Number of Disks</label>
+                        </div>
+                        <select id="select-disk-count" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
+                            <option value="1" selected>1 Disk</option>
+                            <option value="2">2 Disks (Inner + Outer)</option>
+                            <option value="3">3 Disks (Inner + Middle + Outer)</option>
+                        </select>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs">
+                            <label class="text-slate-300 font-medium">Disk Spread Preset</label>
                             <span id="val-disk-spread" class="font-mono text-indigo-400 font-semibold">Standard</span>
                         </div>
                         <select id="select-disk-spread" class="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs text-slate-200 focus:outline-none focus:border-cyan-500">
@@ -176,6 +187,34 @@
                             <option value="medium" selected>Standard Protoplanetary Disk</option>
                             <option value="wide">Extended Outer Disk</option>
                         </select>
+                        <p class="text-[11px] text-slate-500">Sets the default inner and outer edges. Fine-tune them below.</p>
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs">
+                            <label class="text-slate-300 font-medium">Inner Edge</label>
+                            <span id="val-disk-inner" class="font-mono text-cyan-400 font-semibold">0.80 AU</span>
+                        </div>
+                        <input type="range" id="slider-disk-inner" min="0" max="1000" step="1" value="0"
+                            class="w-full accent-cyan-500 bg-slate-800 h-2 rounded-lg cursor-pointer">
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs">
+                            <label class="text-slate-300 font-medium">Outer Edge</label>
+                            <span id="val-disk-outer" class="font-mono text-cyan-400 font-semibold">3.50 AU</span>
+                        </div>
+                        <input type="range" id="slider-disk-outer" min="0" max="1000" step="1" value="1000"
+                            class="w-full accent-cyan-500 bg-slate-800 h-2 rounded-lg cursor-pointer">
+                    </div>
+
+                    <div id="row-disk-boundary" class="hidden space-y-1.5">
+                        <div class="flex justify-between text-xs">
+                            <label class="text-slate-300 font-medium">Gap Between Disks</label>
+                            <span id="val-disk-boundary" class="font-mono text-cyan-400 font-semibold">0.50 AU</span>
+                        </div>
+                        <input type="range" id="slider-disk-boundary" min="0" max="1000" step="1" value="167"
+                            class="w-full accent-cyan-500 bg-slate-800 h-2 rounded-lg cursor-pointer">
                     </div>
 
                     <div class="space-y-1.5">
@@ -224,11 +263,28 @@
 
                     <div class="space-y-1.5">
                         <div class="flex justify-between text-xs">
+                            <label class="text-slate-300">Orbital Speed Decay</label>
+                            <span id="val-speed-decay" class="font-mono text-cyan-400 font-semibold">0 km/s</span>
+                        </div>
+                        <input type="range" id="slider-speed-decay" min="0" max="100" step="0.1" value="0"
+                            class="w-full accent-cyan-500 bg-slate-800 h-2 rounded-lg cursor-pointer">
+                    </div>
+
+                    <div class="space-y-1.5">
+                        <div class="flex justify-between text-xs">
                             <label class="text-slate-300">Gravitational Strength (G)</label>
                             <span id="val-gravity" class="font-mono text-amber-400 font-semibold">1.0x</span>
                         </div>
                         <input type="range" id="slider-gravity" min="0.2" max="3.0" step="0.1" value="1.0"
                             class="w-full accent-amber-500 bg-slate-800 h-2 rounded-lg cursor-pointer">
+                    </div>
+
+                    <div class="flex items-center justify-between pt-2">
+                        <span class="text-xs text-slate-300">Only Change On Star</span>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="toggle-gravity-star-only" class="sr-only peer">
+                            <div class="w-9 h-5 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-cyan-600"></div>
+                        </label>
                     </div>
 
                     <div class="flex items-center justify-between pt-2">
@@ -408,7 +464,7 @@
                 <ul class="list-disc pl-4 space-y-1 text-slate-400">
                     <li><strong class="text-slate-200">Disk Log:</strong> Every 0.5 years: bodies beyond 5 AU, active bodies, and merges.</li>
                     <li><strong class="text-slate-200">Merge Log:</strong> Each merge records both victims' masses, the result, and their distances from the star in the frame before the crash and the merged body's position in the frame after.</li>
-                    <li><strong class="text-slate-200">Planet-Moon Log:</strong> Every year: small bound bodies that stay inside a bigger body's Hill sphere are alerted, with a count of consecutive years they have persisted.</li>
+                    <li><strong class="text-slate-200">Planet-Moon Log:</strong> 2 times a year: small bound bodies that stay inside a bigger body's Hill sphere are alerted, with a count of consecutive years they have persisted.</li>
                 </ul>
                 <p><strong class="text-cyan-300">Interaction:</strong> Click any body to inspect it. Drag to pan, scroll or pinch to zoom.</p>
             </div>
@@ -438,22 +494,22 @@
         { name: 'Asteroid',       min: 3.6e-28, color: '#808080', glow: 0 },
         { name: 'Protoplanet',       min: 3.003e-8, color: '#f97316', glow: 0 },
         { name: 'Rocky Planet',      min: 3.003e-7, color: '#8b5a2b', glow: 0 },
-        { name: 'Gas Dwarf',         min: 3.003e-5, color: '#8b5a2b', glow: 0 },
+        { name: 'Gas Dwarf',         min: 3.003e-5, color: '#4b257f', glow: 0 },
         { name: 'Gassy Planet',        min: 4.204e-5, color: '#3b82f6', glow: 0 },
         { name: 'Gas Giant',         min: 1.502e-4, color: '#d2b48c', glow: 0 },
-        { name: 'Brown Dwarf',       min: 0.01241,  color: '#ef4444', glow: 5 },
+        { name: 'Brown Dwarf',       min: 0.01241,  color: '#942849', glow: 5 },
         { name: 'Red Dwarf Star',    min: 0.07600,  color: '#ef4444', glow: 50 },
         { name: 'Orange Dwarf Star', min: 0.5000,   color: '#f97316', glow: 80 },
         { name: 'Yellow Dwarf Star', min: 0.8000,   color: '#facc15', glow: 130 },
         { name: 'F-type Star',       min: 1.050,    color: '#fef08a', glow: 200 },
         { name: 'A-type Star',       min: 1.401,    color: '#ffffff', glow: 270 },
-        { name: 'B-type Star',       min: 2.101,    color: '#bfdbfe', glow: 340 },
+        { name: 'B-type Star',       min: 2.775,    color: '#bfdbfe', glow: 340 },
         { name: 'O-type Star',       min: 16.00,    color: '#1e3a8a', glow: 420 },
         { name: 'Giant Star',        min: 105.0,    color: '#172554', glow: 600 }
     ];
     const MOON_START_YEAR = 0;
     const DISK_LOG_INTERVAL = 0.5;
-    const MOON_CHECK_INTERVAL = 1.0;
+    const MOON_CHECK_INTERVAL = 0.5;
     const SHATTER_SPEED = 0.12;                    // AU/yr relative speed that fragments a body in shatter mode
     const KMS_PER_AUYR = 4.74;
 
@@ -480,9 +536,14 @@
         asteroidCount: 1000,
         starMass: 1.0,
         diskSpread: 'medium',
+        diskCount: 1,
+        diskInner: 0.8,
+        diskOuter: 3.5,
+        diskBoundary: 0.5,   // gap between disks, in AU
         collisionMode: 'merge',
         timeSpeed: 1.0,
         gravityStrength: 1.0,
+        speedDecay: 0,   // in km/s per year
         showTrails: true,
         showVectors: false,
         showHill: false,
@@ -548,15 +609,22 @@
         return stageOf(b.mass).color;
     }
     function makeBody(x, y, vx, vy, mass, isStar) {
+        const speed = Math.hypot(vx, vy);
         return { id: nextBodyId++, x, y, vx, vy, mass, px: x, py: y,
-                 radius: isStar ? 0.05 : bodyRadius(mass), isStar, trail: [] };
+                 radius: isStar ? 0.05 : bodyRadius(mass), isStar, trail: [],
+                 yearStartSpeed: speed, maxSpeedThisYear: speed };
     }
 
     // ================= INITIALISATION =================
-    function ringRange() {
-        if (config.diskSpread === 'compact') return [0.5, 2.0];
-        if (config.diskSpread === 'wide') return [1.0, 5.0];
-        return [0.8, 3.5];
+    function diskBands() {
+        const inner = config.diskInner, outer = config.diskOuter, gap = config.diskBoundary;
+        if (config.diskCount === 1) return [[inner, outer]];
+        if (config.diskCount === 2) {
+            const mid = (inner + outer) / 2, half = gap / 2;
+            return [[inner, mid - half], [mid + half, outer]];
+        }
+        const w = (outer - inner - 2 * gap) / 3;
+        return [[inner, inner + w], [inner + w + gap, inner + 2 * w + gap], [inner + 2 * w + 2 * gap, outer]];
     }
 
     function initSimulation() {
@@ -572,10 +640,10 @@
 
         const M = config.starMass;
         bodies.push(makeBody(0, 0, 0, 0, M, true));
-
-        const [minR, maxR] = ringRange();
+        const bands = diskBands();
         const G = effectiveG();
         for (let i = 0; i < config.asteroidCount; i++) {
+            const [minR, maxR] = bands[i % bands.length];
             const r = minR + (maxR - minR) * Math.random();
             const th = Math.random() * Math.PI * 2;
             const vMag = Math.sqrt(G * M / r) * (0.98 + Math.random() * 0.04);
@@ -592,11 +660,42 @@
     // ================= PHYSICS =================
     function physicsStep(dt) {
         stepCount++;
+        const prevYear = Math.floor(simTime);
         simTime += dt;
+        const currYear = Math.floor(simTime);
+
         const n = bodies.length;
-        const G = effectiveG();
+        const G_mod = G_BASE * config.gravityStrength;
+        const G_std = G_BASE;
         const ax = new Float64Array(n);
         const ay = new Float64Array(n);
+
+        // Track speeds and apply yearly orbital decay if crossing a year boundary
+        const crossingYear = currYear > prevYear;
+        const decayKms = config.speedDecay; // km/s per year
+        const decayAUpy = decayKms / KMS_PER_AUYR;
+
+        for (let i = 0; i < n; i++) {
+            const b = bodies[i];
+            const speed = Math.hypot(b.vx, b.vy);
+            if (!b.isStar) {
+                if (speed > b.maxSpeedThisYear) {
+                    b.maxSpeedThisYear = speed;
+                }
+                if (crossingYear) {
+                    if (decayAUpy > 0 && b.maxSpeedThisYear <= b.yearStartSpeed) {
+                        // Decelerating or constant throughout the year -> apply decay
+                        if (speed > 0) {
+                            const newSpeed = Math.max(0, speed - decayAUpy);
+                            b.vx = (b.vx / speed) * newSpeed;
+                            b.vy = (b.vy / speed) * newSpeed;
+                        }
+                    }
+                    b.yearStartSpeed = Math.hypot(b.vx, b.vy);
+                    b.maxSpeedThisYear = b.yearStartSpeed;
+                }
+            }
+        }
 
         // Save frame-start positions (used to report the exact pre-crash frame)
         for (let i = 0; i < n; i++) { const b = bodies[i]; b.px = b.x; b.py = b.y; }
@@ -608,13 +707,14 @@
                 const bj = bodies[j];
                 const dx = bj.x - bi.x, dy = bj.y - bi.y;
                 const r2 = dx * dx + dy * dy + 1e-5;
-                const inv = G / (r2 * Math.sqrt(r2));
+                const isStarPair = bi.isStar || bj.isStar;
+                const currentG = (config.gravityStarOnly && !isStarPair) ? G_std : G_mod;
+                const inv = currentG / (r2 * Math.sqrt(r2));
                 const fi = inv * bj.mass, fj = inv * bi.mass;
                 ax[i] += dx * fi; ay[i] += dy * fi;
                 ax[j] -= dx * fj; ay[j] -= dy * fj;
             }
         }
-
         // 2. Kick-drift integration
         for (let i = 0; i < n; i++) {
             const b = bodies[i];
@@ -1163,10 +1263,62 @@ function selectBody(b) {
         document.getElementById('val-star-mass').textContent = config.starMass.toFixed(mass >= 10 ? 1 : 2) + ' M☉';
     });
 
+    // ----- Disk layout -----
+    const DISK_PRESETS = { compact: [0.5, 2.0], medium: [0.8, 3.5], wide: [1.0, 5.0] };
+    const DISK_LOG_MIN = Math.log(0.1), DISK_LOG_MAX = Math.log(100);
+    function sliderToAU(s) { return Math.exp(DISK_LOG_MIN + (DISK_LOG_MAX - DISK_LOG_MIN) * (s / 1000)); }
+    function auToSlider(a) { return Math.round(1000 * (Math.log(a) - DISK_LOG_MIN) / (DISK_LOG_MAX - DISK_LOG_MIN)); }
+    const dInnerS = document.getElementById('slider-disk-inner');
+    const dOuterS = document.getElementById('slider-disk-outer');
+    const dBoundS = document.getElementById('slider-disk-boundary');
+    const dBoundRow = document.getElementById('row-disk-boundary');
+    // Gap slider: 0 AU at the far left, then 0.01 AU to 10 AU on a log scale
+    const GAP_MIN = 0.01, GAP_MAX = 10;
+    // Largest gap that still leaves room for every ring between the edges
+    // Largest gap that still leaves room for every ring between the edges
+    function gapMax() { return GAP_MAX; }
+    function sliderToGap(s) {
+        if (s <= 0) return 0;
+        return Math.exp(Math.log(GAP_MIN) + (Math.log(GAP_MAX) - Math.log(GAP_MIN)) * ((s - 1) / 999));
+    }
+    function gapToSlider(g) {
+        if (g <= 0) return 0;
+        return Math.max(1, Math.round(1 + 999 * (Math.log(g) - Math.log(GAP_MIN)) / (Math.log(GAP_MAX) - Math.log(GAP_MIN))));
+    }
+    function syncDiskSliders() {
+        config.diskBoundary = Math.min(Math.max(config.diskBoundary, 0), GAP_MAX);
+        config.diskInner = Math.max(0.1, config.diskInner);
+        // Push the Outer Edge out so every ring has at least 0.1 AU of width
+        const rings = config.diskCount === 3 ? 3 : (config.diskCount === 2 ? 2 : 1);
+        const needed = (rings - 1) * config.diskBoundary + rings * 0.1;
+        config.diskOuter = Math.min(100, Math.max(config.diskOuter, config.diskInner + needed, 0.2));
+
+        dInnerS.value = auToSlider(config.diskInner);
+        dOuterS.value = auToSlider(config.diskOuter);
+        dBoundS.value = gapToSlider(config.diskBoundary);
+        document.getElementById('val-disk-inner').textContent = config.diskInner.toFixed(2) + ' AU';
+        document.getElementById('val-disk-outer').textContent = config.diskOuter.toFixed(2) + ' AU';
+        document.getElementById('val-disk-boundary').textContent = config.diskBoundary.toFixed(2) + ' AU';
+        dBoundRow.classList.toggle('hidden', config.diskCount === 1);
+    }
+
+    dInnerS.addEventListener('input', e => { config.diskInner = sliderToAU(+e.target.value); syncDiskSliders(); });
+    dOuterS.addEventListener('input', e => { config.diskOuter = sliderToAU(+e.target.value); syncDiskSliders(); });
+    dBoundS.addEventListener('input', e => { config.diskBoundary = sliderToGap(+e.target.value); syncDiskSliders(); });
     document.getElementById('select-disk-spread').addEventListener('change', e => {
         config.diskSpread = e.target.value;
+        [config.diskInner, config.diskOuter] = DISK_PRESETS[e.target.value];
+        config.diskBoundary = 0.5;
         document.getElementById('val-disk-spread').textContent = e.target.options[e.target.selectedIndex].text.split(' ')[0];
+        syncDiskSliders();
     });
+
+    document.getElementById('select-disk-count').addEventListener('change', e => {
+        config.diskCount = parseInt(e.target.value);
+        syncDiskSliders();
+    });
+
+    syncDiskSliders();   // set the sliders and labels to the starting values
 
     document.getElementById('select-collision-mode').addEventListener('change', e => {
         config.collisionMode = e.target.value;
@@ -1178,9 +1330,27 @@ function selectBody(b) {
         document.getElementById('val-time-speed').textContent = config.timeSpeed.toFixed(1) + 'x';
     });
 
+    function sliderToDecay(s) {
+        if (s <= 0) return 0;
+        const minLog = Math.log(0.0001);
+        const maxLog = Math.log(100);
+        return Math.exp(minLog + (maxLog - minLog) * ((s - 0.1) / 99.9));
+    }
+
+    document.getElementById('slider-speed-decay').addEventListener('input', e => {
+        const val = parseFloat(e.target.value);
+        config.speedDecay = sliderToDecay(val);
+        const displayVal = config.speedDecay === 0 ? '0 km/s' : (config.speedDecay < 0.01 ? config.speedDecay.toExponential(2) + ' km/s' : config.speedDecay.toFixed(2) + ' km/s');
+        document.getElementById('val-speed-decay').textContent = displayVal;
+    });
+
     document.getElementById('slider-gravity').addEventListener('input', e => {
         config.gravityStrength = parseFloat(e.target.value);
         document.getElementById('val-gravity').textContent = config.gravityStrength.toFixed(1) + 'x';
+    });
+
+    document.getElementById('toggle-gravity-star-only').addEventListener('change', e => {
+        config.gravityStarOnly = e.target.checked;
     });
 
     document.getElementById('toggle-trails').addEventListener('change', e => { config.showTrails = e.target.checked; });
@@ -1228,8 +1398,87 @@ function selectBody(b) {
         document.getElementById('val-ast-max').textContent = fmtEarth(config.astMaxM);
     });
 
-    document.getElementById('btn-apply-config').addEventListener('click', initSimulation);
+    // ----- Per-disk asteroid settings -----
+    const oldAsteroidBlocks = ['slider-asteroid-count', 'slider-ast-min', 'slider-ast-max']
+        .map(id => document.getElementById(id).parentElement);
 
+    oldAsteroidBlocks.forEach(b => b.classList.add('hidden'));
+
+    config.disks = [0, 1, 2].map(() => ({ count: 1000, minM: 33, maxM: 200 }));
+    const diskSlidersBox = document.createElement('div');
+    diskSlidersBox.className = 'space-y-4';
+    const accretionBlock = document.getElementById('select-collision-mode').parentElement;
+    accretionBlock.parentNode.insertBefore(diskSlidersBox, accretionBlock);
+
+    function buildDiskSliders() {
+        diskSlidersBox.innerHTML = '';
+        const n = config.diskCount;
+        const names = n === 1 ? ['Disk']
+                    : n === 2 ? ['Inner Disk', 'Outer Disk']
+                    : ['Inner Disk', 'Middle Disk', 'Outer Disk'];
+        for (let d = 0; d < n; d++) {
+            const dk = config.disks[d];
+            const box = document.createElement('div');
+            box.className = 'space-y-3 pt-3 border-t border-slate-800';
+            box.innerHTML = `
+                <h4 class="font-semibold text-xs text-cyan-300 uppercase tracking-wider">${names[d]}</h4>
+                <div class="space-y-1.5">
+                    <div class="flex justify-between text-xs">
+                        <label class="text-slate-300">Asteroid Count</label>
+                        <span class="font-mono text-cyan-400 font-semibold">${dk.count}</span>
+                    </div>
+                    <input type="range" min="100" max="10000" step="100" value="${dk.count}"
+                        class="w-full accent-cyan-500 bg-slate-800 h-2 rounded-lg cursor-pointer">
+                </div>
+                <div class="space-y-1.5">
+                    <div class="flex justify-between text-xs">
+                        <label class="text-slate-300">Min Mass</label>
+                        <span class="font-mono text-cyan-400 font-semibold">${fmtEarth(dk.minM)}</span>
+                    </div>
+                    <input type="range" min="0" max="1000" step="1" value="${massToSlider(dk.minM)}"
+                        class="w-full accent-cyan-500 bg-slate-800 h-2 rounded-lg cursor-pointer">
+                </div>
+                <div class="space-y-1.5">
+                    <div class="flex justify-between text-xs">
+                        <label class="text-slate-300">Max Mass</label>
+                        <span class="font-mono text-cyan-400 font-semibold">${fmtEarth(dk.maxM)}</span>
+                    </div>
+                    <input type="range" min="0" max="1000" step="1" value="${massToSlider(dk.maxM)}"
+                        class="w-full accent-cyan-500 bg-slate-800 h-2 rounded-lg cursor-pointer">
+                </div>`;
+            diskSlidersBox.appendChild(box);
+
+            const [cIn, minIn, maxIn] = box.querySelectorAll('input');
+            const [cV, minV, maxV] = box.querySelectorAll('span.font-mono');
+
+            cIn.addEventListener('input', e => {
+                dk.count = parseInt(e.target.value);
+                cV.textContent = dk.count;
+            });
+            minIn.addEventListener('input', e => {
+                dk.minM = sliderToMass(parseFloat(e.target.value));
+                if (dk.minM > dk.maxM) {
+                    dk.maxM = dk.minM;
+                    maxIn.value = e.target.value;
+                    maxV.textContent = fmtEarth(dk.maxM);
+                }
+                minV.textContent = fmtEarth(dk.minM);
+            });
+            maxIn.addEventListener('input', e => {
+                dk.maxM = sliderToMass(parseFloat(e.target.value));
+                if (dk.maxM < dk.minM) {
+                    dk.minM = dk.maxM;
+                    minIn.value = e.target.value;
+                    minV.textContent = fmtEarth(dk.minM);
+                }
+                maxV.textContent = fmtEarth(dk.maxM);
+            });
+        }
+    }
+    document.getElementById('select-disk-count').addEventListener('change', buildDiskSliders);
+    buildDiskSliders();
+
+    document.getElementById('btn-apply-config').addEventListener('click', initSimulation);
     const playBtn = document.getElementById('btn-play-pause');
     function setPlayUI() {
         document.getElementById('play-icon').className = isRunning ? 'fa-solid fa-pause' : 'fa-solid fa-play';
