@@ -647,7 +647,9 @@
             const r = minR + (maxR - minR) * Math.random();
             const th = Math.random() * Math.PI * 2;
             const vMag = Math.sqrt(G * M / r) * (0.98 + Math.random() * 0.04);
-            const mass = (config.astMinM + Math.random() * (config.astMaxM - config.astMinM)) / 332946;   // Earth masses -> M_sun
+            const dk = config.disks[i % bands.length];
+            const lo = Math.min(dk.minM, dk.maxM), hi = Math.max(dk.minM, dk.maxM);
+            const mass = (lo + Math.random() * (hi - lo)) / 332946;   // Earth masses -> M_sun
             bodies.push(makeBody(
                 Math.cos(th) * r, Math.sin(th) * r,
                 -Math.sin(th) * vMag, Math.cos(th) * vMag,
@@ -1379,24 +1381,6 @@ function selectBody(b) {
     document.getElementById('val-ast-min').textContent = fmtEarth(config.astMinM);
     document.getElementById('val-ast-max').textContent = fmtEarth(config.astMaxM);
 
-    astMinSlider.addEventListener('input', e => {
-        config.astMinM = sliderToMass(parseFloat(e.target.value));
-        if (config.astMinM > config.astMaxM) {
-            config.astMaxM = config.astMinM;
-            astMaxSlider.value = e.target.value;
-            document.getElementById('val-ast-max').textContent = fmtEarth(config.astMaxM);
-        }
-        document.getElementById('val-ast-min').textContent = fmtEarth(config.astMinM);
-    });
-    astMaxSlider.addEventListener('input', e => {
-        config.astMaxM = sliderToMass(parseFloat(e.target.value));
-        if (config.astMaxM < config.astMinM) {
-            config.astMinM = config.astMaxM;
-            astMinSlider.value = e.target.value;
-            document.getElementById('val-ast-min').textContent = fmtEarth(config.astMinM);
-        }
-        document.getElementById('val-ast-max').textContent = fmtEarth(config.astMaxM);
-    });
 
     // ----- Per-disk asteroid settings -----
     const oldAsteroidBlocks = ['slider-asteroid-count', 'slider-ast-min', 'slider-ast-max']
@@ -1458,18 +1442,16 @@ function selectBody(b) {
             minIn.addEventListener('input', e => {
                 dk.minM = sliderToMass(parseFloat(e.target.value));
                 if (dk.minM > dk.maxM) {
-                    dk.maxM = dk.minM;
-                    maxIn.value = e.target.value;
-                    maxV.textContent = fmtEarth(dk.maxM);
+                    dk.minM = dk.maxM;
+                    e.target.value = massToSlider(dk.minM);
                 }
                 minV.textContent = fmtEarth(dk.minM);
             });
             maxIn.addEventListener('input', e => {
                 dk.maxM = sliderToMass(parseFloat(e.target.value));
                 if (dk.maxM < dk.minM) {
-                    dk.minM = dk.maxM;
-                    minIn.value = e.target.value;
-                    minV.textContent = fmtEarth(dk.minM);
+                    dk.maxM = dk.minM;
+                    e.target.value = massToSlider(dk.maxM);
                 }
                 maxV.textContent = fmtEarth(dk.maxM);
             });
